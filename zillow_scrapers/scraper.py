@@ -2,9 +2,6 @@ from playwright.sync_api import sync_playwright
 from fake_useragent import UserAgent
 import random
 from typing import List, Dict, Any
-import time
-import traceback
-import json
 
 from zillow_scrapers.typed_scraper.agent_scraper import AgentScraper
 

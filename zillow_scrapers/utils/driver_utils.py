@@ -4,24 +4,32 @@ import traceback
 import json
 
 def fill_form(page, element, text):
-    element.scroll_into_view_if_needed()
+    page.wait_for_load_state("domcontentloaded")
+    human_interaction(page)
+    element.click()
+    time.sleep(random.uniform(0.5, 1))
     element.click()
     for char in text:
         element.press(char)
         time.sleep(random.uniform(0.05, 0.2))
     element.press("Enter")
+    time.sleep(1)
     page.wait_for_load_state("domcontentloaded")
     
 def captcha_checker(page):
-    try:
-        while True:
-            if page.locator("text=Press & Hold to confirm").is_visible(timeout=2000):
-                page.wait_for_timeout(2000)
-            else:
-                break
-    except:
-        return
-      
+    while True:
+        meta_description = page.locator('meta[name="description"]').get_attribute("content")
+        page_title = page.title()
+        captcha_visible = page.locator('div[id="px-captcha-wrapper"]').count() > 0
+
+        if (meta_description and "px-captcha" in meta_description.lower()) or \
+           ("Access to this page has been denied" in page_title) or \
+           captcha_visible or ("Human Verification" in page_title):
+            page.wait_for_timeout(2000)
+        else:
+            break
+
+
 def human_interaction(page, min_sleep=1, max_sleep=2):
     time.sleep(random.uniform(0.05, 0.1))
 
@@ -84,4 +92,34 @@ def extract_page(page, mode):
                 'top_agent': top_agent
             }
             storage.append(agent_dict)
+    elif mode == "detail":
+        try:
+            result = page.locator('script[id="__NEXT_DATA__"][type="application/json"]').inner_html()
+            result = json.loads(result)
+
+            data = result['props']['pageProps']['displayUser']
+
+            address_parts = [data['businessAddress'][x] if data['businessAddress'][x] else "" for x in data['businessAddress'].keys()]
+            phone_parts = [data['phoneNumbers'][x] if data['phoneNumbers'][x] else "" for x in data['phoneNumbers'].keys()]
+            try:
+                website = result['props']['pageProps']['getToKnowMe']['websiteUrl']
+            except:
+                website = None
+            address = ", ".join(filter(None, address_parts))
+            phone = " - ".join(filter(None, phone_parts))
+
+            email = data['email']
+            
+            agent_dict = {
+                "address" : address,
+                "phone": phone,
+                "email": email,
+                "website": website
+            }
+
+            return agent_dict
+
+        except Exception:
+            print(traceback.format_exc())
+            return None, None, None
     return storage
